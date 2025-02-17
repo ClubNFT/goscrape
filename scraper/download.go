@@ -23,7 +23,9 @@ var tagsWithReferences = []string{
 	htmlindex.StyleTag,
 }
 
-func (s *Scraper) downloadReferences(ctx context.Context, index *htmlindex.Index) error {
+func (s *Scraper) downloadReferences(ctx context.Context, index *htmlindex.Index) ([]ScrapeSummary, error) {
+	result := []ScrapeSummary{}
+
 	references, err := index.URLs(htmlindex.BodyTag)
 	if err != nil {
 		s.logger.Error("Getting body node URLs failed", log.Err(err))
@@ -49,42 +51,53 @@ func (s *Scraper) downloadReferences(ctx context.Context, index *htmlindex.Index
 			processor = s.cssProcessor
 		}
 		for _, ur := range references {
-			if err := s.downloadAsset(ctx, ur, processor); err != nil && errors.Is(err, context.Canceled) {
-				return err
+			partialResult, err := s.downloadAsset(ctx, ur, processor)
+			if err != nil && errors.Is(err, context.Canceled) {
+				return nil, err
+			}
+			if partialResult != nil {
+				result = append(result, *partialResult)
 			}
 		}
 	}
 
 	for _, image := range s.imagesQueue {
-		if err := s.downloadAsset(ctx, image, s.checkImageForRecode); err != nil && errors.Is(err, context.Canceled) {
-			return err
+		partialResult, err := s.downloadAsset(ctx, image, s.checkImageForRecode)
+		if err != nil && errors.Is(err, context.Canceled) {
+			return nil, err
+		}
+		if partialResult != nil {
+			result = append(result, *partialResult)
 		}
 	}
+	
 	s.imagesQueue = nil
-	return nil
+	return result, nil
 }
 
 // downloadAsset downloads an asset if it does not exist on disk yet.
-func (s *Scraper) downloadAsset(ctx context.Context, u *url.URL, processor assetProcessor) error {
+func (s *Scraper) downloadAsset(ctx context.Context, u *url.URL, processor assetProcessor) (*ScrapeSummary, error) {
+	result := &ScrapeSummary{}
+
 	u.Fragment = ""
 	urlFull := u.String()
 
 	if !s.shouldURLBeDownloaded(u, 0, true) {
-		return nil
+		return nil, nil
 	}
 
 	filePath := s.getFilePath(u, false)
 	if s.fileExists(filePath) {
-		return nil
+		return nil, nil
 	}
 
 	s.logger.Info("Downloading asset", log.String("url", urlFull))
-	data, _, err := s.httpDownloader(ctx, u)
+	data, _, contentType, size, hash, err := s.httpDownloader(ctx, u)
 	if err != nil {
 		s.logger.Error("Downloading asset failed",
 			log.String("url", urlFull),
 			log.Err(err))
-		return fmt.Errorf("downloading asset: %w", err)
+		return nil, fmt.Errorf("downloading asset: %w", err)
 	}
 
 	if processor != nil {
@@ -98,7 +111,15 @@ func (s *Scraper) downloadAsset(ctx context.Context, u *url.URL, processor asset
 			log.Err(err))
 	}
 
-	return nil
+	result = &ScrapeSummary{
+		FoundUrl:    urlFull,
+		ContentType: contentType,
+		Size:        size,
+		FileHash:    hash,
+		OutputPath:  filePath,
+	}
+
+	return result, nil
 }
 
 func (s *Scraper) cssProcessor(baseURL *url.URL, data []byte) []byte {

@@ -14,17 +14,7 @@ const (
 
 // getFilePath returns a file path for a URL to store the URL content in.
 func (s *Scraper) getFilePath(url *url.URL, isAPage bool) string {
-	fileName := url.Path
-	if isAPage {
-		fileName = getPageFilePath(url)
-	}
-
-	var externalHost string
-	if url.Host != s.URL.Host {
-		externalHost = "_" + url.Host // _ is a prefix for external domains on the filesystem
-	}
-
-	return filepath.Join(s.config.OutputDirectory, s.URL.Host, externalHost, fileName)
+	return GetFilePath(s.config.OutputDirectory, s.URL, url, isAPage)
 }
 
 // getPageFilePath returns a filename for a URL that represents a page.
@@ -49,4 +39,18 @@ func getPageFilePath(url *url.URL) string {
 	}
 
 	return fileName
+}
+
+func GetFilePath(outputDirectory string, mainUrl, url *url.URL, isAPage bool) string {
+	fileName := url.Path
+	if isAPage {
+		fileName = getPageFilePath(url)
+	}
+
+	var externalHost string
+	if url.Host != mainUrl.Host {
+		externalHost = "_" + url.Host // _ is a prefix for external domains on the filesystem
+	}
+
+	return filepath.Join(outputDirectory, mainUrl.Host, externalHost, fileName)
 }

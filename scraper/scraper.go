@@ -20,6 +20,14 @@ import (
 	"golang.org/x/net/proxy"
 )
 
+type ScrapeSummary struct {
+	FoundUrl    string
+	ContentType string
+	Size        int64
+	FileHash    string
+	OutputPath  string
+}
+
 // Config contains the scraper configuration.
 type Config struct {
 	URL      string
@@ -41,7 +49,7 @@ type Config struct {
 }
 
 type (
-	httpDownloader     func(ctx context.Context, u *url.URL) ([]byte, *url.URL, error)
+	httpDownloader     func(ctx context.Context, u *url.URL) ([]byte, *url.URL, string, int64, string, error)
 	dirCreator         func(path string) error
 	fileExistenceCheck func(filePath string) bool
 	fileWriter         func(filePath string, data []byte) error
@@ -162,40 +170,53 @@ func New(logger *log.Logger, cfg Config) (*Scraper, error) {
 }
 
 // Start starts the scraping.
-func (s *Scraper) Start(ctx context.Context) error {
+func (s *Scraper) Start(ctx context.Context) ([]ScrapeSummary, error) {
+	result := []ScrapeSummary{}
+
 	if err := s.dirCreator(s.config.OutputDirectory); err != nil {
-		return err
+		return nil, err
 	}
 
 	if !s.shouldURLBeDownloaded(s.URL, 0, false) {
-		return errors.New("start page is excluded from downloading")
+		return nil, errors.New("start page is excluded from downloading")
 	}
 
-	if err := s.processURL(ctx, s.URL, 0); err != nil {
-		return err
+	partialResult, err := s.processURL(ctx, s.URL, 0)
+	if err != nil {
+		return nil, err
 	}
+	result = append(result, partialResult...)
 
 	for len(s.webPageQueue) > 0 {
 		ur := s.webPageQueue[0]
 		s.webPageQueue = s.webPageQueue[1:]
 		currentDepth := s.webPageQueueDepth[ur.String()]
-		if err := s.processURL(ctx, ur, currentDepth+1); err != nil && errors.Is(err, context.Canceled) {
-			return err
+		partialResult, err := s.processURL(ctx, ur, currentDepth+1)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return result, err
+			}
+			continue
 		}
+		result = append(result, partialResult...)
 	}
 
-	return nil
+	return result, nil
 }
 
-func (s *Scraper) processURL(ctx context.Context, u *url.URL, currentDepth uint) error {
+func (s *Scraper) processURL(ctx context.Context, u *url.URL, currentDepth uint) ([]ScrapeSummary, error) {
+	result := []ScrapeSummary{}
+
 	s.logger.Info("Downloading webpage", log.String("url", u.String()))
-	data, respURL, err := s.httpDownloader(ctx, u)
+	data, respURL, contentType, size, hash, err := s.httpDownloader(ctx, u)
 	if err != nil {
 		s.logger.Error("Processing HTTP Request failed",
 			log.String("url", u.String()),
 			log.Err(err))
-		return err
+		return nil, fmt.Errorf("processing HTTP request: %w", err)
 	}
+
+	s.logger.Info("Finished downloading webpage", log.String("url", u.String()), log.String("contentType", contentType), log.Int64("size", size), log.String("hash", hash))
 
 	fileExtension := ""
 	kind, err := filetype.Match(data)
@@ -216,17 +237,19 @@ func (s *Scraper) processURL(ctx context.Context, u *url.URL, currentDepth uint)
 		s.logger.Error("Parsing HTML failed",
 			log.String("url", u.String()),
 			log.Err(err))
-		return fmt.Errorf("parsing HTML: %w", err)
+		return nil, fmt.Errorf("parsing HTML: %w", err)
 	}
 
 	index := htmlindex.New(s.logger)
 	index.Index(u, doc)
 
-	s.storeDownload(u, data, doc, index, fileExtension)
+	outputFilePath := s.storeDownload(u, data, doc, index, fileExtension)
 
-	if err := s.downloadReferences(ctx, index); err != nil {
-		return err
+	partialResult, err := s.downloadReferences(ctx, index)
+	if err != nil {
+		return nil, fmt.Errorf("downloading references: %w", err)
 	}
+	result = append(result, partialResult...)
 
 	// check first and download afterward to not hit max depth limit for
 	// start page links because of recursive linking
@@ -245,13 +268,21 @@ func (s *Scraper) processURL(ctx context.Context, u *url.URL, currentDepth uint)
 		}
 	}
 
-	return nil
+	result = append(result, ScrapeSummary{
+		FoundUrl:    u.String(),
+		ContentType: contentType,
+		Size:        size,
+		FileHash:    hash,
+		OutputPath:  outputFilePath,
+	})
+
+	return result, nil
 }
 
 // storeDownload writes the download to a file, if a known binary file is detected,
 // processing of the file as page to look for links is skipped.
 func (s *Scraper) storeDownload(u *url.URL, data []byte, doc *html.Node,
-	index *htmlindex.Index, fileExtension string) {
+	index *htmlindex.Index, fileExtension string) string {
 
 	isAPage := false
 	if fileExtension == "" {
@@ -260,7 +291,7 @@ func (s *Scraper) storeDownload(u *url.URL, data []byte, doc *html.Node,
 			s.logger.Error("Fixing file references failed",
 				log.String("url", u.String()),
 				log.Err(err))
-			return
+			return ""
 		}
 
 		if hasChanges {
@@ -276,7 +307,10 @@ func (s *Scraper) storeDownload(u *url.URL, data []byte, doc *html.Node,
 			log.String("URL", u.String()),
 			log.String("file", filePath),
 			log.Err(err))
+		return ""
 	}
+
+	return filePath
 }
 
 // compileRegexps compiles the given regex strings to regular expressions

@@ -3,6 +3,8 @@ package scraper
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,10 +14,10 @@ import (
 	"github.com/cornelk/gotokit/log"
 )
 
-func (s *Scraper) downloadURL(ctx context.Context, u *url.URL) ([]byte, *url.URL, error) {
+func (s *Scraper) downloadURL(ctx context.Context, u *url.URL) ([]byte, *url.URL, string, int64, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating HTTP request: %w", err)
+		return nil, nil, "", 0, "", fmt.Errorf("creating HTTP request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", s.config.UserAgent)
@@ -31,7 +33,7 @@ func (s *Scraper) downloadURL(ctx context.Context, u *url.URL) ([]byte, *url.URL
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("sending HTTP request: %w", err)
+		return nil, nil, "", 0, "", fmt.Errorf("sending HTTP request: %w", err)
 	}
 
 	defer func() {
@@ -43,14 +45,23 @@ func (s *Scraper) downloadURL(ctx context.Context, u *url.URL) ([]byte, *url.URL
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("unexpected HTTP request status code %d", resp.StatusCode)
+		return nil, nil, "", 0, "", fmt.Errorf("unexpected HTTP request status code %d", resp.StatusCode)
 	}
 
 	buf := &bytes.Buffer{}
 	if _, err := io.Copy(buf, resp.Body); err != nil {
-		return nil, nil, fmt.Errorf("reading HTTP request body: %w", err)
+		return nil, nil, "", 0, "", fmt.Errorf("reading HTTP request body: %w", err)
 	}
-	return buf.Bytes(), resp.Request.URL, nil
+	contentType := resp.Header.Get("Content-Type")
+
+	size := int64(len(buf.Bytes()))
+
+	hash, err := getHash(buf.Bytes())
+	if err != nil {
+		return nil, nil, "", 0, "", fmt.Errorf("getting hash: %w", err)
+	}
+
+	return buf.Bytes(), resp.Request.URL, contentType, size, hash, nil
 }
 
 func Headers(headers []string) http.Header {
@@ -62,4 +73,13 @@ func Headers(headers []string) http.Header {
 		}
 	}
 	return h
+}
+
+func getHash(data []byte) (string, error) {
+	hash := sha256.New()
+	if _, err := hash.Write(data); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }

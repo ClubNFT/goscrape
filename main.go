@@ -55,6 +55,31 @@ func (arguments) Version() string {
 }
 
 func main() {
+
+	logger, err := createLogger()
+	if err != nil {
+		fmt.Printf("Creating logger failed: %s\n", err)
+		os.Exit(1)
+	}
+	cfg := scraper.Config{
+		//MaxDepth: uint(args.Depth),
+		//OutputDirectory: args.Output,
+		URL: "https://polyone-shared.s3.ap-southeast-2.amazonaws.com/marble/index.html",
+	}
+	sc, err := scraper.New(logger, cfg)
+	if err != nil {
+		fmt.Errorf("initializing scraper: %w", err)
+		os.Exit(1)
+	}
+
+	result, err := sc.Start(context.Background())
+	if err != nil {
+		return
+	}
+	fmt.Println(result)
+}
+
+func main2() {
 	args, err := readArguments()
 	if err != nil {
 		fmt.Printf("Reading arguments failed: %s\n", err)
@@ -170,7 +195,7 @@ func scrapeURLs(ctx context.Context, cfg scraper.Config,
 		}
 
 		logger.Info("Scraping", log.String("url", sc.URL.String()))
-		if err = sc.Start(ctx); err != nil {
+		if _, err = sc.Start(ctx); err != nil {
 			if errors.Is(err, context.Canceled) {
 				os.Exit(0)
 			}
