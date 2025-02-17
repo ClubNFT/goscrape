@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/cornelk/gotokit/log"
 )
 
 func (s *Scraper) downloadURL(ctx context.Context, u *url.URL) ([]byte, *url.URL, string, int64, string, error) {
@@ -38,9 +36,6 @@ func (s *Scraper) downloadURL(ctx context.Context, u *url.URL) ([]byte, *url.URL
 
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			s.logger.Error("Closing HTTP Request body failed",
-				log.String("url", u.String()),
-				log.Err(err))
 		}
 	}()
 

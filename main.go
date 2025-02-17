@@ -55,18 +55,12 @@ func (arguments) Version() string {
 }
 
 func main() {
-
-	logger, err := createLogger()
-	if err != nil {
-		fmt.Printf("Creating logger failed: %s\n", err)
-		os.Exit(1)
-	}
 	cfg := scraper.Config{
 		//MaxDepth: uint(args.Depth),
 		//OutputDirectory: args.Output,
 		URL: "https://polyone-shared.s3.ap-southeast-2.amazonaws.com/marble/index.html",
 	}
-	sc, err := scraper.New(logger, cfg)
+	sc, err := scraper.New(cfg)
 	if err != nil {
 		fmt.Errorf("initializing scraper: %w", err)
 		os.Exit(1)
@@ -189,7 +183,7 @@ func scrapeURLs(ctx context.Context, cfg scraper.Config,
 
 	for _, url := range args.URLs {
 		cfg.URL = url
-		sc, err := scraper.New(logger, cfg)
+		sc, err := scraper.New(cfg)
 		if err != nil {
 			return fmt.Errorf("initializing scraper: %w", err)
 		}

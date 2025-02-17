@@ -8,7 +8,6 @@ import (
 
 	"github.com/cornelk/goscrape/css"
 	"github.com/cornelk/goscrape/htmlindex"
-	"github.com/cornelk/gotokit/log"
 	"golang.org/x/net/html"
 )
 
@@ -108,10 +107,6 @@ func (s *Scraper) fixNodeURL(baseURL *url.URL, attributes []string, node *html.N
 			continue
 		}
 
-		s.logger.Debug("HTML node relinked",
-			log.String("value", value),
-			log.String("fixed_value", adjusted))
-
 		attribute := &node.Attr[i]
 		attribute.Val = adjusted
 		changed = true
@@ -139,15 +134,12 @@ func (s *Scraper) fixScriptNodeURL(baseURL *url.URL, node *html.Node,
 	}
 
 	cssData := node.FirstChild.Data
-	css.Process(s.logger, baseURL, cssData, processor)
+	css.Process(baseURL, cssData, processor)
 
 	var changed bool
 
 	for before, filePath := range urls {
 		cssData = replaceCSSUrls(before, filePath, cssData)
-		s.logger.Debug("CSS Element relinked",
-			log.String("url", before),
-			log.String("fixed_url", filePath))
 		changed = true
 	}
 

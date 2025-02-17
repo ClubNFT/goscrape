@@ -9,7 +9,6 @@ import (
 
 	"github.com/cornelk/goscrape/css"
 	"github.com/cornelk/goscrape/htmlindex"
-	"github.com/cornelk/gotokit/log"
 )
 
 // assetProcessor is a processor of a downloaded asset that can transform
@@ -28,22 +27,18 @@ func (s *Scraper) downloadReferences(ctx context.Context, index *htmlindex.Index
 
 	references, err := index.URLs(htmlindex.BodyTag)
 	if err != nil {
-		s.logger.Error("Getting body node URLs failed", log.Err(err))
 	}
 	s.imagesQueue = append(s.imagesQueue, references...)
 
 	references, err = index.URLs(htmlindex.ImgTag)
 	if err != nil {
-		s.logger.Error("Getting img node URLs failed", log.Err(err))
 	}
 	s.imagesQueue = append(s.imagesQueue, references...)
 
 	for _, tag := range tagsWithReferences {
 		references, err = index.URLs(tag)
 		if err != nil {
-			s.logger.Error("Getting node URLs failed",
-				log.String("node", tag),
-				log.Err(err))
+
 		}
 
 		var processor assetProcessor
@@ -70,7 +65,7 @@ func (s *Scraper) downloadReferences(ctx context.Context, index *htmlindex.Index
 			result = append(result, *partialResult)
 		}
 	}
-	
+
 	s.imagesQueue = nil
 	return result, nil
 }
@@ -91,12 +86,9 @@ func (s *Scraper) downloadAsset(ctx context.Context, u *url.URL, processor asset
 		return nil, nil
 	}
 
-	s.logger.Info("Downloading asset", log.String("url", urlFull))
 	data, _, contentType, size, hash, err := s.httpDownloader(ctx, u)
 	if err != nil {
-		s.logger.Error("Downloading asset failed",
-			log.String("url", urlFull),
-			log.Err(err))
+
 		return nil, fmt.Errorf("downloading asset: %w", err)
 	}
 
@@ -105,10 +97,7 @@ func (s *Scraper) downloadAsset(ctx context.Context, u *url.URL, processor asset
 	}
 
 	if err = s.fileWriter(filePath, data); err != nil {
-		s.logger.Error("Writing asset file failed",
-			log.String("url", urlFull),
-			log.String("file", filePath),
-			log.Err(err))
+
 	}
 
 	result = &ScrapeSummary{
@@ -135,7 +124,7 @@ func (s *Scraper) cssProcessor(baseURL *url.URL, data []byte) []byte {
 	}
 
 	cssData := string(data)
-	css.Process(s.logger, baseURL, cssData, processor)
+	css.Process(baseURL, cssData, processor)
 
 	if len(urls) == 0 {
 		return data
@@ -143,9 +132,6 @@ func (s *Scraper) cssProcessor(baseURL *url.URL, data []byte) []byte {
 
 	for ori, filePath := range urls {
 		cssData = replaceCSSUrls(ori, filePath, cssData)
-		s.logger.Debug("CSS Element relinked",
-			log.String("url", ori),
-			log.String("fixed_url", filePath))
 	}
 
 	return []byte(cssData)

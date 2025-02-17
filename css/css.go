@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cornelk/gotokit/log"
 	"github.com/gorilla/css/scanner"
 )
 
@@ -16,7 +15,7 @@ type Token = scanner.Token
 type urlProcessor func(token *Token, data string, url *url.URL)
 
 // Process the CSS data and call a processor for every found URL.
-func Process(logger *log.Logger, url *url.URL, data string, processor urlProcessor) {
+func Process(url *url.URL, data string, processor urlProcessor) {
 	css := scanner.New(data)
 
 	for {
@@ -40,9 +39,6 @@ func Process(logger *log.Logger, url *url.URL, data string, processor urlProcess
 
 		u, err := url.Parse(src)
 		if err != nil {
-			logger.Error("Parsing URL failed",
-				log.String("url", src),
-				log.Err(err))
 			continue
 		}
 

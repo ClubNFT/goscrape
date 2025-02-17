@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/cornelk/gotokit/log"
 )
 
 // createDownloadPath creates the download path if it does not exist yet.
@@ -14,7 +12,6 @@ func (s *Scraper) createDownloadPath(path string) error {
 		return nil
 	}
 
-	s.logger.Debug("Creating dir", log.String("path", path))
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
 		return fmt.Errorf("creating directory '%s': %w", path, err)
 	}
@@ -31,7 +28,6 @@ func (s *Scraper) writeFile(filePath string, data []byte) error {
 		return err
 	}
 
-	s.logger.Debug("Creating file", log.String("path", filePath))
 	f, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("creating file '%s': %w", filePath, err)

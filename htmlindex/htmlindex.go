@@ -7,23 +7,20 @@ import (
 	"strings"
 
 	"github.com/cornelk/goscrape/css"
-	"github.com/cornelk/gotokit/log"
 	"golang.org/x/net/html"
 )
 
 // Index provides an index for all HTML tags of relevance for scraping.
 type Index struct {
-	logger *log.Logger
 
 	// key is HTML tag, value is a map of all its urls and the HTML nodes for it
 	data map[string]map[string][]*html.Node
 }
 
 // New returns a new index.
-func New(logger *log.Logger) *Index {
+func New() *Index {
 	return &Index{
-		logger: logger,
-		data:   make(map[string]map[string][]*html.Node),
+		data: make(map[string]map[string][]*html.Node),
 	}
 }
 
@@ -130,7 +127,6 @@ func (idx *Index) nodeAttributeURLs(baseURL *url.URL, node *html.Node,
 
 		if parser != nil {
 			data := nodeAttributeParserData{
-				logger:    idx.logger,
 				url:       baseURL,
 				node:      node,
 				attribute: attr.Key,
@@ -148,9 +144,8 @@ func (idx *Index) nodeAttributeURLs(baseURL *url.URL, node *html.Node,
 	// special case to support style tag
 	if len(attributeName) == 0 && parser != nil {
 		data := nodeAttributeParserData{
-			logger: idx.logger,
-			url:    baseURL,
-			node:   node,
+			url:  baseURL,
+			node: node,
 		}
 		references, _ := parser(data)
 		processReferences(references)
@@ -189,7 +184,7 @@ func styleParser(data nodeAttributeParserData) ([]string, bool) {
 	}
 
 	cssData := data.node.FirstChild.Data
-	css.Process(data.logger, data.url, cssData, processor)
+	css.Process(data.url, cssData, processor)
 
 	return urls, true
 }

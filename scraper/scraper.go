@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/cornelk/goscrape/htmlindex"
-	"github.com/cornelk/gotokit/log"
 	"github.com/h2non/filetype"
 	"github.com/h2non/filetype/types"
 	"golang.org/x/net/html"
@@ -59,7 +58,6 @@ type (
 type Scraper struct {
 	config  Config
 	cookies *cookiejar.Jar
-	logger  *log.Logger
 	URL     *url.URL // contains the main URL to parse, will be modified in case of a redirect
 
 	auth   string
@@ -83,7 +81,7 @@ type Scraper struct {
 
 // New creates a new Scraper instance.
 // nolint: funlen
-func New(logger *log.Logger, cfg Config) (*Scraper, error) {
+func New(cfg Config) (*Scraper, error) {
 	var errs []error
 
 	u, err := url.Parse(cfg.URL)
@@ -144,7 +142,6 @@ func New(logger *log.Logger, cfg Config) (*Scraper, error) {
 	s := &Scraper{
 		config:  cfg,
 		cookies: cookies,
-		logger:  logger,
 		URL:     u,
 
 		client: client,
@@ -207,16 +204,10 @@ func (s *Scraper) Start(ctx context.Context) ([]ScrapeSummary, error) {
 func (s *Scraper) processURL(ctx context.Context, u *url.URL, currentDepth uint) ([]ScrapeSummary, error) {
 	result := []ScrapeSummary{}
 
-	s.logger.Info("Downloading webpage", log.String("url", u.String()))
 	data, respURL, contentType, size, hash, err := s.httpDownloader(ctx, u)
 	if err != nil {
-		s.logger.Error("Processing HTTP Request failed",
-			log.String("url", u.String()),
-			log.Err(err))
 		return nil, fmt.Errorf("processing HTTP request: %w", err)
 	}
-
-	s.logger.Info("Finished downloading webpage", log.String("url", u.String()), log.String("contentType", contentType), log.Int64("size", size), log.String("hash", hash))
 
 	fileExtension := ""
 	kind, err := filetype.Match(data)
@@ -234,13 +225,10 @@ func (s *Scraper) processURL(ctx context.Context, u *url.URL, currentDepth uint)
 	buf := bytes.NewBuffer(data)
 	doc, err := html.Parse(buf)
 	if err != nil {
-		s.logger.Error("Parsing HTML failed",
-			log.String("url", u.String()),
-			log.Err(err))
 		return nil, fmt.Errorf("parsing HTML: %w", err)
 	}
 
-	index := htmlindex.New(s.logger)
+	index := htmlindex.New()
 	index.Index(u, doc)
 
 	outputFilePath := s.storeDownload(u, data, doc, index, fileExtension)
@@ -256,7 +244,6 @@ func (s *Scraper) processURL(ctx context.Context, u *url.URL, currentDepth uint)
 	// a hrefs
 	references, err := index.URLs(htmlindex.ATag)
 	if err != nil {
-		s.logger.Error("Parsing URL failed", log.Err(err))
 	}
 
 	for _, ur := range references {
@@ -288,9 +275,6 @@ func (s *Scraper) storeDownload(u *url.URL, data []byte, doc *html.Node,
 	if fileExtension == "" {
 		fixed, hasChanges, err := s.fixURLReferences(u, doc, index)
 		if err != nil {
-			s.logger.Error("Fixing file references failed",
-				log.String("url", u.String()),
-				log.Err(err))
 			return ""
 		}
 
@@ -303,10 +287,6 @@ func (s *Scraper) storeDownload(u *url.URL, data []byte, doc *html.Node,
 	filePath := s.getFilePath(u, isAPage)
 	// always update html files, content might have changed
 	if err := s.fileWriter(filePath, data); err != nil {
-		s.logger.Error("Writing to file failed",
-			log.String("URL", u.String()),
-			log.String("file", filePath),
-			log.Err(err))
 		return ""
 	}
 

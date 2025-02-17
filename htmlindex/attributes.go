@@ -3,12 +3,10 @@ package htmlindex
 import (
 	"net/url"
 
-	"github.com/cornelk/gotokit/log"
 	"golang.org/x/net/html"
 )
 
 type nodeAttributeParserData struct {
-	logger    *log.Logger
 	url       *url.URL
 	node      *html.Node
 	attribute string
