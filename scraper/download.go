@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/cornelk/goscrape/css"
-	"github.com/cornelk/goscrape/htmlindex"
+	"github.com/ClubNFT/goscrape/css"
+	"github.com/ClubNFT/goscrape/htmlindex"
 )
 
 // assetProcessor is a processor of a downloaded asset that can transform

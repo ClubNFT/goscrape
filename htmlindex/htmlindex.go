@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cornelk/goscrape/css"
+	"github.com/ClubNFT/goscrape/css"
 	"golang.org/x/net/html"
 )
 

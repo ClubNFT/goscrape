@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/cornelk/goscrape/css"
-	"github.com/cornelk/goscrape/htmlindex"
+	"github.com/ClubNFT/goscrape/css"
+	"github.com/ClubNFT/goscrape/htmlindex"
 	"golang.org/x/net/html"
 )
 

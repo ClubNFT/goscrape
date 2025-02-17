@@ -1,4 +1,4 @@
-module github.com/cornelk/goscrape
+module github.com/ClubNFT/goscrape
 
 go 1.22
 

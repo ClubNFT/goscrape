@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ClubNFT/goscrape/scraper"
 	"github.com/alexflint/go-arg"
-	"github.com/cornelk/goscrape/scraper"
 	"github.com/cornelk/gotokit/app"
 	"github.com/cornelk/gotokit/buildinfo"
 	"github.com/cornelk/gotokit/env"

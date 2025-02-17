@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/cornelk/goscrape/htmlindex"
+	"github.com/ClubNFT/goscrape/htmlindex"
 	"github.com/h2non/filetype"
 	"github.com/h2non/filetype/types"
 	"golang.org/x/net/html"
