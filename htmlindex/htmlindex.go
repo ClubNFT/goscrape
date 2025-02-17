@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ClubNFT/goscrape/css"
 	"golang.org/x/net/html"
+	"goscrape/css"
 )
 
 // Index provides an index for all HTML tags of relevance for scraping.

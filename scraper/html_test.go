@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/ClubNFT/goscrape/htmlindex"
 	"github.com/cornelk/gotokit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
+	"goscrape/htmlindex"
 )
 
 func TestFixURLReferences(t *testing.T) {

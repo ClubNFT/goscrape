@@ -1,4 +1,4 @@
-module github.com/ClubNFT/goscrape
+module goscrape
 
 go 1.22
 

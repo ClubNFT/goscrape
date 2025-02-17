@@ -6,9 +6,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/ClubNFT/goscrape/css"
-	"github.com/ClubNFT/goscrape/htmlindex"
 	"golang.org/x/net/html"
+	"goscrape/css"
+	"goscrape/htmlindex"
 )
 
 // ignoredURLPrefixes contains a list of URL prefixes that do not need to bo adjusted.

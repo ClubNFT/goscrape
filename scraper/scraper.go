@@ -12,11 +12,11 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/ClubNFT/goscrape/htmlindex"
 	"github.com/h2non/filetype"
 	"github.com/h2non/filetype/types"
 	"golang.org/x/net/html"
 	"golang.org/x/net/proxy"
+	"goscrape/htmlindex"
 )
 
 type ScrapeSummary struct {
